@@ -155,7 +155,19 @@
 
 - (AVPlayer *)playerWithPlayerItem:(NSObject<FVPAVPlayerItem> *)playerItem {
   // The default factory always vends FVPDefault* implementations, so it is safe to cast back.
-  return [AVPlayer playerWithPlayerItem:((FVPDefaultAVPlayerItem *)playerItem).playerItem];
+  AVPlayer *player =
+      [AVPlayer playerWithPlayerItem:((FVPDefaultAVPlayerItem *)playerItem).playerItem];
+#if TARGET_OS_IOS
+  // VideoPlayerOptions.allowBackgroundPlayback prevents the Dart lifecycle observer from
+  // pausing the player, but AVPlayer still defaults to the system-decided "automatic" policy.
+  // iOS 18 can pause an audiovisual item under that policy and resume it on foregrounding.
+  // Players that did not opt in are still paused by video_player on the Dart side.
+  if (@available(iOS 15.0, *)) {
+    player.audiovisualBackgroundPlaybackPolicy =
+        AVPlayerAudiovisualBackgroundPlaybackPolicyContinuesIfPossible;
+  }
+#endif
+  return player;
 }
 
 - (NSObject<FVPPixelBufferSource> *)videoOutputWithOutputSettings:
